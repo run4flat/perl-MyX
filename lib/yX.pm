@@ -29,6 +29,15 @@ sub filter {
 			$snippet =~ s/\n\\backslash\n/\\/g;
 			# Replace double quotes
 			$snippet =~ s/\n\\begin_inset Quotes e[rl]d\n\\end_inset\n\n/"/g;
+			# Extract inline equation elements
+			while ($snippet =~ /\\begin_inset Formula \$(.*?)\$/) {
+				# Pull out the contents of the equation
+				my $eqn = $1;
+				# Replace funny characters with underlines
+				$eqn =~ tr/{}[]()/_/;
+				# Substitute this for the formula
+				$snippet =~ s/\n\\begin_inset Formula \$.*?\$\n\\end_inset\n\n/$eqn/;
+			}
 			
 			# Fix any extra line wrapping
 			$snippet =~ s/\n//g;
