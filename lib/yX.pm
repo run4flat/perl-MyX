@@ -32,6 +32,8 @@ sub filter {
 			
 			# Fix any extra line wrapping
 			$snippet =~ s/\n//g;
+			# Handle forced newlines
+			$snippet =~ s/\\begin_inset Newline newline\\end_inset/\n/g;
 			
 #			$code .= "# line 1 \"Listing $listing_number\"\n$indent$snippet\n";
 			$code .= "$indent$snippet\n";
