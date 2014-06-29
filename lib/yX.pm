@@ -30,9 +30,12 @@ sub filter {
 			# Replace double quotes
 			$snippet =~ s/\n\\begin_inset Quotes e[rl]d\n\\end_inset\n\n/"/g;
 			# Extract inline equation elements
-			while ($snippet =~ /\\begin_inset Formula \$(.*?)\$/) {
+			while ($snippet =~ /\\begin_inset Formula \$(.*?[^\\])\$/) {
 				# Pull out the contents of the equation
 				my $eqn = $1;
+				# Croak on sigils in formulae
+				die('Sigils are not allowed in formulae inset into code')
+					if $eqn =~ tr/$@%//;
 				# Replace funny characters with escape sequences
 				$eqn =~ s/_/_sub_/g;
 				$eqn =~ s/\^/_sup_/g;
