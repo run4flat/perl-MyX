@@ -47,7 +47,7 @@ sub filter {
 				$eqn =~ s/\[/_lbracket_/g;
 				$eqn =~ s/\]/_rbracket_/g;
 				# Substitute this for the formula
-				$snippet =~ s/\n\\begin_inset Formula \$.*?\$\n\\end_inset\n\n/$eqn/;
+				$snippet =~ s/\n?\\begin_inset Formula \$.*?\$\n\\end_inset\n\n/$eqn/;
 			}
 			
 			# Fix any extra line wrapping
