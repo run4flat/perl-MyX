@@ -33,8 +33,16 @@ sub filter {
 			while ($snippet =~ /\\begin_inset Formula \$(.*?)\$/) {
 				# Pull out the contents of the equation
 				my $eqn = $1;
-				# Replace funny characters with underlines
-				$eqn =~ tr/{}[]()/_/;
+				# Replace funny characters with escape sequences
+				$eqn =~ s/_/_sub_/g;
+				$eqn =~ s/\^/_sup_/g;
+				$eqn =~ s/\\/_backslash_/g;
+				$eqn =~ s/\{/_lcurly_/g;
+				$eqn =~ s/\}/_rcurly_/g;
+				$eqn =~ s/\(/_lparen_/g;
+				$eqn =~ s/\)/_rparen_/g;
+				$eqn =~ s/\[/_lbracket_/g;
+				$eqn =~ s/\]/_rbracket_/g;
 				# Substitute this for the formula
 				$snippet =~ s/\n\\begin_inset Formula \$.*?\$\n\\end_inset\n\n/$eqn/;
 			}

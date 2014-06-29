@@ -61,16 +61,16 @@
 \begin_body
 
 \begin_layout Standard
-This test works with equations, including subscripts, as variable names.
+This test works greek, superscripts, and subscripts in variable names
 \end_layout
 
 \begin_layout Standard
-Test Function: check_eqn_var_names();
+Test Function: check_greek_var_name();
 \end_layout
 
 \begin_layout LyX-Code
 my $
-\begin_inset Formula $a_{1}$
+\begin_inset Formula $\theta_{1}^{\prime}$
 \end_inset
 
  = 1;
@@ -78,23 +78,23 @@ my $
 
 \begin_layout LyX-Code
 $
-\begin_inset Formula $a_{1}$
+\begin_inset Formula $\theta_{1}^{\prime}$
 \end_inset
 
  = 5;
 \end_layout
 
 \begin_layout LyX-Code
-sub check_eqn_var_names {
+sub check_greek_var_names {
 \end_layout
 
 \begin_deeper
 \begin_layout LyX-Code
 is($
-\begin_inset Formula $a_{1}$
+\begin_inset Formula $\theta_{1}^{\prime}$
 \end_inset
 
-, 5, 'Equations as variable names works');
+, 5, 'Equations as variable names (including greek) works');
 \end_layout
 
 \end_deeper
