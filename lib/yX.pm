@@ -5,7 +5,102 @@ use warnings;
                               package yX;
 ############################################################################
 
+use Filter::Util::Call;
+
+sub import {
+	my ($class, $is_dumping) = @_;
+	
+	# Add this filter
+	my $self = bless {
+		is_dumping => $is_dumping,
+		indent => '',
+	};
+	filter_add($self);
+}
+
 sub filter {
+	my $self = shift;
+	
+	# Start with an empty chunk of extracted code
+	$self->{code} = '';
+	
+	$self->parse_line;
+	
+	# Set the current topic to the code we extracted
+	$_ = $self->{code};
+	
+	return $self->{status};
+}
+
+sub next_line {
+	my $self = shift;
+	$self->{status} = filter_read();
+}
+
+# Parses a line or collection of lines, until it generates some code or
+# matches the (optional) supplied end pattern.
+sub parse_line {
+	my ($self, $end_pattern) = @_;
+	
+	# Set the end pattern to something that never matches if no pattern was
+	# specified
+	$end_pattern ||= qr/(*FAIL)/;
+	
+	$self->next_line;
+	
+	while ($self->{status} >= 0) {
+		
+		return if $_ =~ $end_pattern;
+		
+		# If this is a LyX command that we know how to parse, then parse it
+		$self->$1 if /\\(\w+)/ and $self->can($1);
+		
+		# Return if this filter generated a line of code, or if we're at
+		# the end of the file.
+		return if $self->{code} or $self->{status} == 0;
+		
+		# Otherwise, grab the next line. The current line may have generated
+		# side effects, but we can discard it and move on.
+		$self->next_line;
+	}
+}
+
+sub begin_layout {
+	my $self = shift;
+	
+	# What kind of layout?
+	my ($layout_type) = /begin_layout (\w+)/;
+	$layout_type =~ tr/- /_/;
+	
+	# Call this layout handler if it exists
+	my $layout_method = "begin_layout_$layout_type";
+	return $self->$layout_method if $self->can($layout_method);
+	
+	# Otherwise just skip to the end of this layout command
+	$self->parse_line(qr/^\\end_layout/);
+}
+
+sub begin_layout_Section {
+	my $self = shift;
+	
+	# Get the next line, which should contain the section name
+	$self->next_line;
+	
+	# handle (possibly non-existent) edge case
+	return if /\\end_layout/;
+	
+	# Store the section name (could be more sophisticated for math
+	# characters in a Section name)
+	chomp($self->{Section} = $_);
+	
+	# Find the end of the section declaration
+	$self->parse_line(qr/^\\end_layout/);
+}
+
+sub begin_layout_LyX_Code {
+	
+}
+	
 	# Extract code listings
 	my $listing_number = 1;
 	my $code = '';
@@ -46,6 +141,7 @@ sub filter {
 				$eqn =~ s/\)/_rparen_/g;
 				$eqn =~ s/\[/_lbracket_/g;
 				$eqn =~ s/\]/_rbracket_/g;
+				$eqn =~ s/\s+//g;
 				# Substitute this for the formula
 				$snippet =~ s/\n?\\begin_inset Formula \$.*?\$\n\\end_inset\n\n/$eqn/;
 			}
@@ -61,8 +157,7 @@ sub filter {
 		}
 	}
 	$_ = $code;
-	print "-------- $0 --------\n$code\n-------- --------\n"
-		if $ENV{MYX_PRINT_CODE};
+	print $code if $ENV{MYX_PRINT_CODE};
 }
 
 use Filter::Simple \&filter;
