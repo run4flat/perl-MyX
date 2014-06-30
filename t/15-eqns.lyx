@@ -70,7 +70,7 @@ Test Function: check_eqn_var_names();
 
 \begin_layout LyX-Code
 my $
-\begin_inset Formula $a_{1}$
+\begin_inset Formula $ab_{1}$
 \end_inset
 
  = 1;
@@ -78,7 +78,7 @@ my $
 
 \begin_layout LyX-Code
 $
-\begin_inset Formula $a_{1}$
+\begin_inset Formula $ab_{1}$
 \end_inset
 
  = 5;
@@ -91,7 +91,7 @@ sub check_eqn_var_names {
 \begin_deeper
 \begin_layout LyX-Code
 is($
-\begin_inset Formula $a_{1}$
+\begin_inset Formula $ab_{1}$
 \end_inset
 
 , 5, 'Equations as variable names works');

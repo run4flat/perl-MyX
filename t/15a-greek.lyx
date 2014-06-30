@@ -70,7 +70,7 @@ Test Function: check_greek_var_name();
 
 \begin_layout LyX-Code
 my $
-\begin_inset Formula $\theta_{1}^{\prime}$
+\begin_inset Formula $\Delta\theta_{1}^{\prime}$
 \end_inset
 
  = 1;
@@ -78,7 +78,7 @@ my $
 
 \begin_layout LyX-Code
 $
-\begin_inset Formula $\theta_{1}^{\prime}$
+\begin_inset Formula $\Delta\theta_{1}^{\prime}$
 \end_inset
 
  = 5;
@@ -91,7 +91,7 @@ sub check_greek_var_names {
 \begin_deeper
 \begin_layout LyX-Code
 is($
-\begin_inset Formula $\theta_{1}^{\prime}$
+\begin_inset Formula $\Delta\theta_{1}^{\prime}$
 \end_inset
 
 , 5, 'Equations as variable names (including greek) works');
