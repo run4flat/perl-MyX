@@ -46,6 +46,7 @@ sub filter {
 				$eqn =~ s/\)/_rparen_/g;
 				$eqn =~ s/\[/_lbracket_/g;
 				$eqn =~ s/\]/_rbracket_/g;
+				$eqn =~ s/,/_comma_/g;
 				$eqn =~ s/\s+//g;
 				# Substitute this for the formula
 				$snippet =~ s/\n?\\begin_inset Formula \$.*?\$\n\\end_inset\n\n/$eqn/;
