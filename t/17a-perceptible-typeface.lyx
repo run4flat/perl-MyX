@@ -74,7 +74,7 @@ This test works with variables for which the font face changes imperceptibly
 \end_layout
 
 \begin_layout Standard
-Test Function: check_eqn_var_names();
+Test Function: check_perceptible_typeface();
 \end_layout
 
 \begin_layout Standard
@@ -96,12 +96,12 @@ thing
 \end_layout
 
 \begin_layout LyX-Code
-sub check_eqn_var_names {
+sub check_perceptible_typeface {
 \end_layout
 
 \begin_deeper
 \begin_layout LyX-Code
-is($thing, 5, 'Equations as variable names works');
+is($thing, 1, 'Equations as variable names works');
 \end_layout
 
 \end_deeper

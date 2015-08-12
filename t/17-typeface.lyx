@@ -74,7 +74,7 @@ This test works with variables for which the font face changes imperceptibly
 \end_layout
 
 \begin_layout Standard
-Test Function: check_eqn_var_names();
+Test Function: check_typeface();
 \end_layout
 
 \begin_layout Standard
@@ -96,7 +96,7 @@ g = 5;
 \end_layout
 
 \begin_layout LyX-Code
-sub check_eqn_var_names {
+sub check_typeface {
 \end_layout
 
 \begin_deeper
