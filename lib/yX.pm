@@ -5,66 +5,183 @@ use warnings;
                               package yX;
 ############################################################################
 
-sub filter {
-	# Extract code listings
-	my $listing_number = 1;
-	my $code = '';
-	my $indent = '';
-	my @chunks = split /(\\begin_deeper|\\end_deeper)/;
-	CHUNK: for my $chunk (@chunks) {
-		# Process indentation changes
-		if ($chunk eq '\\begin_deeper') {
-			$indent .= "\t";
-			next CHUNK;
+# We need to keep track of a number of pieces of information. For now, I
+# track all of these in a collection of global variables. This'll be a
+# problem when one MyX document attempts to use another MyX document,
+# but as that's not yet supported, I am not too worried about it.
+
+my (@headings, @parse_stack, @wants_code_stack, $code, $indent,
+	$line_number, $listing_count, $just_wanted_code);
+
+# This constructs a line directive that Perl knows how to parse so it
+# gives useful location reporting of problems.
+sub current_line_description {
+	my $description = "line $line_number \"";
+	if (@headings) {
+		$description .= "Section " . join('.', @headings)
+	}
+	else {
+		$description .= "Preface";
+	}
+	$description .= " listing $listing_count\"\n";
+	return $description;
+}
+sub current_line_directive {
+	return '# ' . current_line_description;
+}
+
+# Keeps track of indentation for me
+sub parse_indentation {
+	my ($line) = @_;
+	$indent .= "\t" if $line =~ /begin_deeper/;
+	chop $indent if $line =~ /end_deeper/;
+}
+
+# Tracks the current section and subsection number
+sub parse_section {
+	my ($line) = @_;
+	if ($line =~ /begin_layout S((ubs)*)ection/) {
+		my $depth = length($1) / 3;
+		$#headings = $depth;
+		$headings[$depth]++;
+		$listing_count = 0;
+	}
+}
+
+sub parse_code {
+	my ($line) = @_;
+	if ($line =~ /begin_layout LyX-Code/) {
+		$code .= $indent;
+	}
+	elsif ($line =~ /end_layout/) {
+		$code .= "\n";
+		$line_number++;
+	}
+	else {
+		# Special case the backslash stuff:
+		$line =~ s{\\backslash}{\\}g;
+		
+		$code .= $line;
+	}
+}
+
+sub parse_newline {
+	my ($line) = @_;
+	
+	# Add a newline when we see the start of the inset
+	$code .= "\n" if $line =~ /\\begin_inset Newline/;
+}
+
+sub parse_quotes {
+	my ($line) = @_;
+	
+	# Add double quotes when we encounter the start of the inset
+	$code .= '"' if $line =~ /\\begin_inset Quotes e[rl]d/;
+}
+
+sub parse_formula {
+	# Get the inset formula and turn into a valid code snippet.
+	my ($line) = @_;
+	return unless $line =~ /\\begin_inset Formula \$(.*?[^\\])\$/;
+	$line = $1;
+	
+	# Croak on sigils in formulae
+	die('Sigils are not allowed in formulae inset into code on '
+		. current_line_description() . "\n") if $line =~ tr/$@%//;
+	# Replace funny characters with escape sequences
+	$line =~ s/_/_sub_/g;
+	$line =~ s/\^/_sup_/g;
+	$line =~ s/\\/_backslash_/g;
+	$line =~ s/\{/_lcurly_/g;
+	$line =~ s/\}/_rcurly_/g;
+	$line =~ s/\(/_lparen_/g;
+	$line =~ s/\)/_rparen_/g;
+	$line =~ s/\[/_lbracket_/g;
+	$line =~ s/\]/_rbracket_/g;
+	$line =~ s/,/_comma_/g;
+	$line =~ s/\s+//g;
+	
+	# Add the resulting code
+	$code .= $line;
+}
+
+# Given a \begin_... line, returns the appropriate parser function,
+# which gets pushed onto the parser stack.
+sub parser_for {
+	my ($line) = @_;
+	
+	# First and foremost, set up code parsing
+	if ($line =~ /begin_layout LyX-Code/) {
+		# Unless we just came from a LyX Code layout, set up the
+		# variables for a new listing.
+		if (not $just_wanted_code) {
+			$listing_count++;
+			$line_number = 1;
+			$code .= current_line_directive;
 		}
-		if ($chunk eq '\\end_deeper') {
-			chop $indent;
-			next CHUNK;
+		$wants_code_stack[-1] = 1;
+		return \&parse_code;
+	}
+	
+	# Section and indentation handling always setup special parsers, too
+	return \&parse_section if $line =~ /begin_layout S((ubs)*)ection/;
+	return \&parse_indentation if $line =~ /begin_deeper/;
+	
+	# If we're not parsing code, then set up a null parser
+	return \&parse_ignore unless $wants_code_stack[-1];
+	
+	# If we're generating code, then set up specialty parsers for known
+	# insets
+	return \&parse_formula if $line =~ /begin_inset Formula/;
+	return \&parse_quotes if $line =~ /begin_inset Quotes/;
+	return \&parse_newline if $line =~ /begin_inset Newline/;
+	
+	# And set up the ignore parser for everything else, overriding the
+	# code wanted stack setting.
+	$wants_code_stack[-1] = 0;
+	return \&parse_ignore;
+}
+
+sub parse_ignore { }
+
+sub parse_lines {
+	# Get the collection of lines
+	my @lines = @_;
+	
+	# Set up the globals we will use
+	@headings = ();
+	$indent = $code = '';
+	$line_number = 1;
+	$listing_count = 0;
+	$just_wanted_code = 0;
+	
+	# Initialize the parse state and code wanted stacks
+	@parse_stack = (\&parse_ignore);
+	@wants_code_stack = (0);
+	
+	# Go!
+	LINE: while(@lines) {
+		my $line = shift @lines;
+		if ($line =~ /\\begin_/) {
+			push @wants_code_stack, $wants_code_stack[-1];
+			push @parse_stack, parser_for($line);
 		}
-		# Extract code
-		while($chunk =~ /\G.*?begin_layout LyX-Code\n(.*?)\n\\end_layout\n\n/sg) {
-			my $snippet = $1;
-			
-			# Remove the backslash escapes
-			$snippet =~ s/\n\\backslash\n/\\/g;
-			# Replace double quotes
-			$snippet =~ s/\n\\begin_inset Quotes e[rl]d\n\\end_inset\n\n/"/g;
-			# Extract inline equation elements
-			while ($snippet =~ /\\begin_inset Formula \$(.*?[^\\])\$/) {
-				# Pull out the contents of the equation
-				my $eqn = $1;
-				# Croak on sigils in formulae
-				die('Sigils are not allowed in formulae inset into code')
-					if $eqn =~ tr/$@%//;
-				# Replace funny characters with escape sequences
-				$eqn =~ s/_/_sub_/g;
-				$eqn =~ s/\^/_sup_/g;
-				$eqn =~ s/\\/_backslash_/g;
-				$eqn =~ s/\{/_lcurly_/g;
-				$eqn =~ s/\}/_rcurly_/g;
-				$eqn =~ s/\(/_lparen_/g;
-				$eqn =~ s/\)/_rparen_/g;
-				$eqn =~ s/\[/_lbracket_/g;
-				$eqn =~ s/\]/_rbracket_/g;
-				$eqn =~ s/,/_comma_/g;
-				$eqn =~ s/\s+//g;
-				# Substitute this for the formula
-				$snippet =~ s/\n?\\begin_inset Formula \$.*?\$\n\\end_inset\n\n/$eqn/;
-			}
-			
-			# Fix any extra line wrapping
-			$snippet =~ s/\n//g;
-			# Handle forced newlines
-			$snippet =~ s/\\begin_inset Newline newline\\end_inset/\n/g;
-			
-#			$code .= "# line 1 \"Listing $listing_number\"\n$indent$snippet\n";
-			$code .= "$indent$snippet\n";
-			$listing_number++;
+		# Use the new or current parser to handle this line
+		$parse_stack[-1]->($line);
+		# Pop the top parser if we reached the matching end tag
+		if ($line =~ /\\end_/ and @parse_stack > 1) {
+			pop @parse_stack;
+			$just_wanted_code = pop @wants_code_stack;
 		}
 	}
-	$_ = $code;
-	print "-------- $0 --------\n$code\n-------- --------\n"
-		if $ENV{MYX_PRINT_CODE};
+	
+	# All done
+	return $code;
+}
+
+sub filter {
+	$_ = parse_lines(split /\n/);
+#	print "-----\n$_\n-----\n";
 }
 
 use Filter::Simple \&filter;
@@ -81,9 +198,6 @@ MyX - mixing LyX and Perl
 
  # Run the Perl code in a LyX document
  perl -MyX document.lyx
- 
- # As above, but print the extracted code first
- MYX_PRINT_CODE=1 perl -MyX document.lyx
 
 =head1 DESCRIPTION
 
