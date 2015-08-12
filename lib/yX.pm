@@ -11,7 +11,7 @@ use warnings;
 # but as that's not yet supported, I am not too worried about it.
 
 my (@headings, @parse_stack, @wants_code_stack, $code, $indent,
-	$line_number, $listing_count, $just_wanted_code);
+	$line_number, $listing_count, $just_wanted_code, $prev_font_type);
 
 # This constructs a line directive that Perl knows how to parse so it
 # gives useful location reporting of problems.
@@ -52,10 +52,21 @@ sub parse_code {
 	my ($line) = @_;
 	if ($line =~ /begin_layout LyX-Code/) {
 		$code .= $indent;
+		$prev_font_type = 'typewriter';
 	}
 	elsif ($line =~ /end_layout/) {
 		$code .= "\n";
 		$line_number++;
+	}
+	elsif ($line =~ /^\\family (.*)/) {
+		# Handle font changes gracefully
+		my $font_type = $1;
+		$font_type =~ s/\s+/_/;
+		$font_type = 'typewriter' if $font_type eq 'default';
+		if ($font_type ne $prev_font_type) {
+			$code .= "_${font_type}_";
+			$prev_font_type = $font_type;
+		}
 	}
 	else {
 		# Special case the backslash stuff:
@@ -154,6 +165,7 @@ sub parse_lines {
 	$line_number = 1;
 	$listing_count = 0;
 	$just_wanted_code = 0;
+	$prev_font_type = 'typewriter';
 	
 	# Initialize the parse state and code wanted stacks
 	@parse_stack = (\&parse_ignore);
