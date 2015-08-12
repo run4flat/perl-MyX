@@ -183,7 +183,12 @@ sub parse_lines {
 		# Pop the top parser if we reached the matching end tag
 		if ($line =~ /\\end_/ and @parse_stack > 1) {
 			pop @parse_stack;
-			$just_wanted_code = pop @wants_code_stack;
+			
+			# The "just wanted code" is the previous value on the
+			# stack, except for the special case of indentation reduction
+			my $prev_wants_code = pop @wants_code_stack;
+			$just_wanted_code = $prev_wants_code
+				unless $line =~ /\\end_deeper/;
 		}
 	}
 	
